@@ -15,7 +15,7 @@ pipeline {
         stage('Clone repository') {
             steps {
                 echo "📥 GitHub'dan kod yuklanmoqda..."
-                git branch: 'main', url: 'https://github.com/ErgashevDjahongir/jenkins-test-1.git'
+                git branch: 'master', url: 'https://github.com/ErgashevDjahongir/jenkins-test-1.git'
             }
         }
 
