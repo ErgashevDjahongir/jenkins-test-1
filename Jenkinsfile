@@ -79,4 +79,8 @@ pipeline {
       echo "Build yakunlandi: ${env.BUILD_NUMBER}"
     }
   }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 841c03c6616eda3041ead4f2ba005f67e8505881
