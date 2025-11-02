@@ -1,61 +1,82 @@
 pipeline {
-    agent any
+  agent any
 
-    triggers {
-        pollSCM('* * * * *')  // har 1 daqiqada tekshiradi
+  environment {
+    IMAGE = "simple-html-app:${env.BUILD_NUMBER}"
+    CONTAINER_NAME = "simple-html-container-${env.BUILD_NUMBER}"
+    HOST_PORT = "8080" // kerak bo'lsa o'zgartiring
+    CONTAINER_PORT = "80"
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
     }
 
-    environment {
-        IMAGE_NAME = "jenkins-nginx-test"
-        CONTAINER_NAME = "jenkins-nginx-container"
+    stage('Build Docker image') {
+      steps {
+        script {
+          // Docker CLI mavjud deb hisoblaymiz (Jenkins agentda docker o'rnatilgan)
+          sh "docker build -t ${IMAGE} ."
+        }
+      }
     }
 
-    stages {
-
-        stage('Clone repository') {
-            steps {
-                echo "📥 GitHub'dan kod yuklanmoqda..."
-                git branch: 'master', url: 'https://github.com/ErgashevDjahongir/jenkins-test-1.git'
-            }
+    stage('Run container') {
+      steps {
+        script {
+          // Agar eski container qolgan bo'lsa o'chirish
+          sh """
+            if docker ps -a --format '{{.Names}}' | grep -q ${CONTAINER_NAME}; then
+              docker rm -f ${CONTAINER_NAME} || true
+            fi
+            docker run -d --name ${CONTAINER_NAME} -p ${HOST_PORT}:${CONTAINER_PORT} ${IMAGE}
+          """
+          // Kichik kutish: nginx ichida startup uchun bir necha soniya (odatda tez)
+          sh "sleep 3"
         }
-
-        stage('Test') {
-            steps {
-                echo "🧪 Test bosqichi bajarilmoqda..."
-                sh '''
-                if [ -f "yangi.html" ]; then
-                    echo "✅ Test o'tdi: yangi.html topildi!"
-                else
-                    echo "❌ Xato: yangi.html topilmadi!"
-                    exit 1
-                fi
-                '''
-            }
-        }
-
-        stage('Build Docker image') {
-            steps {
-                echo "🏗️ Docker image build qilinmoqda..."
-                sh '''
-                docker build -t $IMAGE_NAME .
-                '''
-            }
-        }
-
-        stage('Deploy to container') {
-            steps {
-                echo "🚀 Docker konteyner ishga tushirilmoqda..."
-
-                sh '''
-                # Eski konteynerni to'xtatamiz
-                docker stop $CONTAINER_NAME || true
-                docker rm $CONTAINER_NAME || true
-
-                # Yangi konteynerni ishga tushuramiz
-                docker run -d --name $CONTAINER_NAME  $IMAGE_NAME
-
-                '''
-            }
-        }
+      }
     }
+
+    stage('Smoke test') {
+      steps {
+        script {
+          // container ichidagi sahifani tekshiramiz
+          sh """
+            echo "Sahifa HTTP status va bosh qatorni tekshirish:"
+            HTTP_STATUS=\$(curl -s -o /dev/null -w '%{http_code}' http://localhost:${HOST_PORT}/)
+            echo "HTTP status: \$HTTP_STATUS"
+            if [ "\$HTTP_STATUS" != "200" ]; then
+              echo "Sahifa ochilmadi (status \$HTTP_STATUS)"
+              docker logs ${CONTAINER_NAME} || true
+              exit 1
+            fi
+            echo "Sahifa ochildi — muvaffaqiyat!"
+          """
+        }
+      }
+    }
+
+    stage('Cleanup (optional)') {
+      steps {
+        script {
+          // Agar container doimiy ishlashi kerak bo'lsa bu blokni o'chiring.
+          // Hozir misolda containerni o'chirmaymiz — ammo agar xohlasangiz quyidagilarni ochiring:
+          // sh "docker rm -f ${CONTAINER_NAME} || true"
+          echo "Agar kerak bo'lsa containerni olib tashlashni bu yerda sozlang."
+        }
+      }
+    }
+  }
+
+  post {
+    failure {
+      script { sh "docker logs ${CONTAINER_NAME} || true" }
+    }
+    always {
+      echo "Build yakunlandi: ${env.BUILD_NUMBER}"
+    }
+  }
 }
