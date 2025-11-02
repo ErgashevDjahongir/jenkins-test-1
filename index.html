@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Soddа HTML - Jenkins Pipeline Test</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 2rem; background:#f7f9fc; color:#111; }
+    .card { background:white; padding:1.5rem; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.08); max-width:800px; margin:auto; }
+    h1 { color:#0b74de; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Salom, Jahongir! ✅</h1>
+    <p>Bu oddiy HTML sahifa Jenkins pipeline tomonidan build qilinib, Docker konteynerda ishlatildi.</p>
+    <p>Vaqt: <span id="time"></span></p>
+  </div>
+
+  <script>
+    document.getElementById('time').textContent = new Date().toLocaleString();
+  </script>
+</body>
+</html>
